@@ -1,0 +1,6 @@
+﻿  main.cpp
+  Generating code
+  Compiler switch has changed, fall back to full compilation.
+  All 4 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  PA9_GROUP.vcxproj -> C:\Users\malpe\OneDrive\Desktop\CPTS122\PA9_GROUP\x64\Release\PA9_GROUP.exe
