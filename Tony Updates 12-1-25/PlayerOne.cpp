@@ -1,153 +1,169 @@
-/*
-    NOTE ABOUT AI:
-    Some of the  comments in this section were generated with
-    the assistance of a  AI tool (ChatGPT) to help  teammates
-    better understand the code structure and logic.
-    All implementation and final decisions were made by my hands.
-*/
-
-
 #include "PlayerOne.h"
 #include <iostream>
 
 using std::cout;
 using std::endl;
 
-// Constructor: Initialize the Skeleton character
+// -------------------------
+// Constructor
+// -------------------------
 PlayerOne::PlayerOne()
 {
-    // Basic attributes
     name = "Skeleton";
-    health = 100.0;
-    maxHealth = 100.0;
 
-    // Set initial position on the ground
     position = sf::Vector2f(100.f, FLOOR_Y);
-
-    // Velocity is unused since we are grounded
     velocity = sf::Vector2f(0.f, 0.f);
-
     facingRight = true;
 
-    // Load animations from files
     animations["Idle"].loadFromFile("Assets/PlayerOne/Skeleton/Idle.png", 10, 64, 64);
     animations["Walk"].loadFromFile("Assets/PlayerOne/Skeleton/Walk.png", 10, 64, 64);
     animations["Attack"].loadFromFile("Assets/PlayerOne/Skeleton/Attack.png", 6, 64, 64);
+    animations["Jump"].loadFromFile("Assets/PlayerOne/Skeleton/Jump.png", 1, 64, 64);
 
     currentAction = "Idle";
+
+    healthBarForeground.setFillColor(sf::Color(0, 150, 255)); // BLUE
+
 }
 
 // -------------------------
-// MOVEMENT FUNCTIONS
+// Movement
 // -------------------------
-
 void PlayerOne::moveLeft()
 {
-    // Move character left
-    position.x = position.x - 0.20f;
-
-    // Face left
+    position.x -= 0.15f;
     facingRight = false;
-
-    // Change animation to walking
-    currentAction = "Walk";
+    if (!isAttacking)
+        currentAction = "Walk";
 }
 
 void PlayerOne::moveRight()
 {
-    // Move character right
-    position.x = position.x + 0.20f;
-
-    // Face right
+    position.x += 0.15f;
     facingRight = true;
+    if (!isAttacking)
+        currentAction = "Walk";
+}
 
-    // Change animation to walking
-    currentAction = "Walk";
+void PlayerOne::moveJump()
+{
+    if (onGround)
+    {
+        velocity.y = -8.0f;
+        currentAction = "Jump";
+        onGround = false;
+    }
 }
 
 // -------------------------
-// COMBAT FUNCTIONS
+// Combat
 // -------------------------
-
 void PlayerOne::attack()
 {
-    // Print attack message
-    cout << name << " attacks quickly!" << endl;
-
-    // Set attack animation
-    currentAction = "Attack";
-
-    // Damage logic can be handled elsewhere
+    if (!isAttacking)
+    {
+        cout << name << " attacks!" << endl;
+        currentAction = "Attack";
+        isAttacking = true;
+        attackTimer = 0.0f;
+        hasHitThisAttack = false;
+        animations[currentAction].reset();
+    }
 }
 
 void PlayerOne::takeDamage(int damage)
 {
-    // Reduce health by damage amount
-    health = health - damage;
+    health -= damage;
+    if (health < 0)
+        health = 0;
 
-    // Prevent health from going below 0
-    if (health < 0.0)
-    {
-        health = 0.0;
-    }
-
-    // Print remaining health
     cout << name << " takes " << damage << " damage, Health now: " << health << endl;
 }
 
 // -------------------------
-// ANIMATION AND UPDATE
+// Update
 // -------------------------
-
 void PlayerOne::update(float deltaTime)
 {
-    // Keep character on the ground
-    position.y = FLOOR_Y;
+    // Apply vertical movement
+    position.y += velocity.y;
+    if (!onGround)
+        velocity.y += 0.15f;
 
-    // Update current animation
-    animations[currentAction].update(deltaTime);
-
-    // Reset attack to Idle after it finishes
-    if (currentAction == "Attack")
+    // Floor collision
+    if (position.y >= FLOOR_Y)
     {
-        static float attackTimer = 0.0f;
-
-        // Add elapsed time
-        attackTimer = attackTimer + deltaTime;
-
-        // Check if attack duration is over
-        if (attackTimer >= 0.3f)  // quick attack
-        {
+        position.y = FLOOR_Y;
+        velocity.y = 0;
+        if (currentAction != "Walk" && currentAction != "Attack")
             currentAction = "Idle";
-            attackTimer = 0.0f;
-        }
-    }
-}
-
-// -------------------------
-// GET SPRITE FOR DRAWING
-// -------------------------
-
-sf::Sprite PlayerOne::getSprite() const
-{
-    // Get current animation frame
-    sf::Sprite sprite = animations.at(currentAction).getSprite();
-
-    // Set position
-    sprite.setPosition(position);
-
-    // Set scale depending on facing direction
-    if (facingRight)
-    {
-        sprite.setScale(2.0f, 2.0f);
+        onGround = true;
     }
     else
     {
-        sprite.setScale(-2.0f, 2.0f);
+        onGround = false;
     }
 
-    // Set origin to center
-    sprite.setOrigin(32, 32);
+    // Handle attack timing
+    if (isAttacking && currentAction == "Attack")
+    {
+        attackTimer += deltaTime;
 
+        if (attackTimer >= 0.1f && attackTimer < 0.3f)
+        {
+            hitBoxActive = true;
+            updateHitBox();
+        }
+        else
+        {
+            hitBoxActive = false;
+        }
+
+        if (attackTimer >= 0.6f)
+        {
+            currentAction = "Idle";
+            isAttacking = false;
+            hitBoxActive = false;
+            attackTimer = 0.0f;
+        }
+    }
+
+    animations[currentAction].update(deltaTime);
+
+    updateCollisionBoxes();
+    Character::update(deltaTime);
+
+}
+
+// -------------------------
+// Sprite
+// -------------------------
+sf::Sprite PlayerOne::getSprite() const
+{
+    sf::Sprite sprite = animations.at(currentAction).getSprite();
+    sprite.setPosition(position);
+    sprite.setScale(facingRight ? 2.f : -2.f, 2.f);
+    sprite.setOrigin(32, 32);
     return sprite;
+}
+
+// -------------------------
+// Hitbox update
+// -------------------------
+void PlayerOne::updateHitBox()
+{
+    if (facingRight)
+    {
+        hitBox.left = position.x + 10;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
+    else
+    {
+        hitBox.left = position.x - 60;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
 }
