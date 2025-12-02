@@ -1,153 +1,163 @@
-/*
-    NOTE ABOUT AI:
-    Some of the  comments in this section were generated with
-    the assistance of a  AI tool (ChatGPT) to help  teammates
-    better understand the code structure and logic.
-    All implementation and final decisions were made by my hands.
-*/
-
 #include "PlayerTwo.h"
 #include <iostream>
 
 using std::cout;
 using std::endl;
 
-// Constructor: Initialize the Wizard character
+// -------------------------
+// Constructor
+// -------------------------
 PlayerTwo::PlayerTwo()
 {
-    // Basic attributes
-    name = "Wizard";
-    health = 100.0;
-    maxHealth = 100.0;
-
-    // Set initial position on the ground
-    position = sf::Vector2f(500.f, FLOOR_Y);
-
-    // Velocity is unused since the character is always grounded
+    name = "Skeleton";
+  
+    position = sf::Vector2f(700.f, FLOOR_Y);
     velocity = sf::Vector2f(0.f, 0.f);
+    facingRight = false;
 
-    facingRight = true;
-
-    // Load animations from files
-    animations["Idle"].loadFromFile("Assets/PlayerTwo/Wizard/Idle.png", 6, 64, 64);
-    animations["Run"].loadFromFile("Assets/PlayerTwo/Wizard/Run.png", 8, 64, 64);
-    animations["Attack01"].loadFromFile("Assets/PlayerTwo/Wizard/Attack01.png", 10, 64, 64);
-    animations["Attack02"].loadFromFile("Assets/PlayerTwo/Wizard/Attack02.png", 11, 64, 64);
+    animations["Idle"].loadFromFile("Assets/PlayerOne/Skeleton/Idle.png", 10, 64, 64);
+    animations["Walk"].loadFromFile("Assets/PlayerOne/Skeleton/Walk.png", 10, 64, 64);
+    animations["Attack"].loadFromFile("Assets/PlayerOne/Skeleton/Attack.png", 6, 64, 64);
+    animations["Jump"].loadFromFile("Assets/PlayerOne/Skeleton/Jump.png", 1, 64, 64);
 
     currentAction = "Idle";
 }
 
 // -------------------------
-// MOVEMENT FUNCTIONS
+// Movement
 // -------------------------
-
 void PlayerTwo::moveLeft()
 {
-    // Move character left
-    position.x = position.x - 0.20f;
-
-    // Face left
+    position.x -= 0.15f;
     facingRight = false;
-
-    // Change animation to running
-    currentAction = "Run";
+    if (!isAttacking)
+        currentAction = "Walk";
 }
 
 void PlayerTwo::moveRight()
 {
-    // Move character right
-    position.x = position.x + 0.20f;
-
-    // Face right
+    position.x += 0.15f;
     facingRight = true;
+    if (!isAttacking)
+        currentAction = "Walk";
+}
 
-    // Change animation to running
-    currentAction = "Run";
+void PlayerTwo::moveJump()
+{
+    if (onGround)
+    {
+        velocity.y = -8.0f;
+        currentAction = "Jump";
+        onGround = false;
+    }
 }
 
 // -------------------------
-// COMBAT FUNCTIONS
+// Combat
 // -------------------------
-
 void PlayerTwo::attack()
 {
-    // Print attack message
-    cout << name << " casts a powerful spell!" << endl;
-
-    // Set attack animation
-    currentAction = "Attack01";
-
-    // Damage logic can be handled elsewhere
+    if (!isAttacking)
+    {
+        cout << name << " attacks!" << endl;
+        currentAction = "Attack";
+        isAttacking = true;
+        attackTimer = 0.0f;
+        hasHitThisAttack = false;
+        animations[currentAction].reset();
+    }
 }
 
 void PlayerTwo::takeDamage(int damage)
 {
-    // Reduce health by damage amount
-    health = health - damage;
+    health -= damage;
+    if (health < 0)
+        health = 0;
 
-    // Prevent health from going below 0
-    if (health < 0.0)
-    {
-        health = 0.0;
-    }
-
-    // Print remaining health
     cout << name << " takes " << damage << " damage, Health now: " << health << endl;
 }
 
 // -------------------------
-// ANIMATION AND UPDATE
+// Update
 // -------------------------
-
 void PlayerTwo::update(float deltaTime)
 {
-    // Keep character on the ground
-    position.y = FLOOR_Y;
+    position.y += velocity.y;
+    if (!onGround)
+        velocity.y += 0.15f;
 
-    // Update current animation
-    animations[currentAction].update(deltaTime);
-
-    // Reset attack to Idle after it finishes
-    if (currentAction == "Attack01" || currentAction == "Attack02")
+    if (position.y >= FLOOR_Y)
     {
-        static float attackTimer = 0.0f;
-
-        // Add elapsed time
-        attackTimer = attackTimer + deltaTime;
-
-        // Check if attack duration is over
-        if (attackTimer >= 0.6f)  // slower, heavy attack
-        {
+        position.y = FLOOR_Y;
+        velocity.y = 0;
+        if (currentAction != "Walk" && currentAction != "Attack")
             currentAction = "Idle";
-            attackTimer = 0.0f;
-        }
-    }
-}
-
-// -------------------------
-// GET SPRITE FOR DRAWING
-// -------------------------
-
-sf::Sprite PlayerTwo::getSprite() const
-{
-    // Get current animation frame
-    sf::Sprite sprite = animations.at(currentAction).getSprite();
-
-    // Set position
-    sprite.setPosition(position);
-
-    // Set scale depending on facing direction
-    if (facingRight)
-    {
-        sprite.setScale(2.0f, 2.0f);
+        onGround = true;
     }
     else
     {
-        sprite.setScale(-2.0f, 2.0f);
+        onGround = false;
     }
 
-    // Set origin to center
-    sprite.setOrigin(32, 32);
+    if (isAttacking && currentAction == "Attack")
+    {
+        attackTimer += deltaTime;
 
+        if (attackTimer >= 0.1f && attackTimer < 0.3f)
+        {
+            hitBoxActive = true;
+            updateHitBox();
+        }
+        else
+        {
+            hitBoxActive = false;
+        }
+
+        if (attackTimer >= 0.6f)
+        {
+            currentAction = "Idle";
+            isAttacking = false;
+            hitBoxActive = false;
+            attackTimer = 0.0f;
+        }
+    }
+
+    animations[currentAction].update(deltaTime);
+
+    updateCollisionBoxes();
+    Character::update(deltaTime);
+
+}
+
+// -------------------------
+// Sprite
+// -------------------------
+sf::Sprite PlayerTwo::getSprite() const
+{
+    sf::Sprite sprite = animations.at(currentAction).getSprite();
+    sprite.setPosition(position);
+    sprite.setScale(facingRight ? 2.f : -2.f, 2.f);
+    sprite.setOrigin(32, 32);
     return sprite;
+}
+
+// -------------------------
+// Hitbox update
+// -------------------------
+void PlayerTwo::updateHitBox()
+{
+    if (facingRight)
+    {
+        hitBox.left = position.x + 10;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
+    else
+    {
+        hitBox.left = position.x - 60;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
 }
