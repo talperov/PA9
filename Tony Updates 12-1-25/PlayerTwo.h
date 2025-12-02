@@ -1,29 +1,28 @@
 #pragma once
 #include "Character.hpp"
-#include "Animation.hpp"
 #include <map>
 #include <string>
 
 class PlayerTwo : public Character
 {
 private:
+    bool facingRight;
     std::map<std::string, Animation> animations;
     std::string currentAction;
-    bool facingRight;  // Track direction
 
+    void updateHitBox();
 
 public:
     PlayerTwo();
 
-    //MOVEMENT
     void moveLeft() override;
     void moveRight() override;
+    void moveJump() override;
 
-    //COMBAT
     void attack() override;
     void takeDamage(int damage) override;
 
-    //ANIMATION
-    void update(float deltaTime);
+    void update(float deltaTime) override;
     sf::Sprite getSprite() const;
 };
+
