@@ -1,153 +1,228 @@
 /*
-    NOTE ABOUT AI:
-    Some of the  comments in this section were generated with
-    the assistance of a  AI tool (ChatGPT) to help  teammates
-    better understand the code structure and logic.
-    All implementation and final decisions were made by my hands.
+As the rubric stated we were allowed to use AI to better our code, in order to better our code, we
+used Generative AI (Grok) to add comments on our functions and variables so the reader of the code, or
+writer themselves can easily understand what is going on in it.
 */
-
-
 #include "PlayerOne.h"
 #include <iostream>
-
 using std::cout;
 using std::endl;
 
-// Constructor: Initialize the Skeleton character
+// Sets up Player One (the skeleton character)
 PlayerOne::PlayerOne()
 {
-    // Basic attributes
-    name = "Skeleton";
-    health = 100.0;
-    maxHealth = 100.0;
-
-    // Set initial position on the ground
+    name = "Skeleton(Player1)";
     position = sf::Vector2f(100.f, FLOOR_Y);
-
-    // Velocity is unused since we are grounded
     velocity = sf::Vector2f(0.f, 0.f);
-
     facingRight = true;
 
-    // Load animations from files
+    // Load all animations from image files
     animations["Idle"].loadFromFile("Assets/PlayerOne/Skeleton/Idle.png", 10, 64, 64);
     animations["Walk"].loadFromFile("Assets/PlayerOne/Skeleton/Walk.png", 10, 64, 64);
     animations["Attack"].loadFromFile("Assets/PlayerOne/Skeleton/Attack.png", 6, 64, 64);
+    animations["Jump"].loadFromFile("Assets/PlayerOne/Skeleton/Jump.png", 1, 64, 64);
+    animations["Hurt"].loadFromFile("Assets/PlayerOne/Skeleton/Hurt.png", 4, 64, 64);
+    animations["Death"].loadFromFile("Assets/PlayerOne/Skeleton/Death.png", 8, 64, 64);
 
-    currentAction = "Idle";
+    currentAction = "Idle"; // Start standing still
+    healthBarForeground.setFillColor(sf::Color(0, 150, 255)); // Blue health bar for Player 1
 }
 
-// -------------------------
-// MOVEMENT FUNCTIONS
-// -------------------------
-
+// Move left (A key)
 void PlayerOne::moveLeft()
 {
-    // Move character left
-    position.x = position.x - 0.20f;
-
-    // Face left
+    if (health <= 0)
+    {
+        return;
+    }
+    position.x -= 0.15f;
     facingRight = false;
-
-    // Change animation to walking
-    currentAction = "Walk";
+    if (!isAttacking && currentAction != "Hurt")
+    {
+        currentAction = "Walk";
+    }
 }
 
+// Move right (D key)
 void PlayerOne::moveRight()
 {
-    // Move character right
-    position.x = position.x + 0.20f;
-
-    // Face right
+    if (health <= 0)
+    {
+        return;
+    }
+    position.x += 0.15f;
     facingRight = true;
-
-    // Change animation to walking
-    currentAction = "Walk";
+    if (!isAttacking && currentAction != "Hurt")
+    {
+        currentAction = "Walk";
+    }
 }
 
-// -------------------------
-// COMBAT FUNCTIONS
-// -------------------------
+// Jump (W key) 
+void PlayerOne::moveJump()
+{
+    if (health <= 0 || !onGround)
+    {
+        return;
+    }
+    velocity.y = -15.0f; // Jump up
+    currentAction = "Jump";
+    onGround = false;
+}
 
+// Start an attack (Space key)
 void PlayerOne::attack()
 {
-    // Print attack message
-    cout << name << " attacks quickly!" << endl;
-
-    // Set attack animation
+    if (health <= 0 || isAttacking)
+    {
+        return;
+    }
+    cout << name << " attacks!" << endl;
     currentAction = "Attack";
-
-    // Damage logic can be handled elsewhere
+    isAttacking = true;
+    attackTimer = 0.0f;
+    hasHitThisAttack = false; // Can hit again this attack
+    animations[currentAction].reset(); // Restart attack animation
 }
 
+// Take damage when hit
 void PlayerOne::takeDamage(int damage)
 {
-    // Reduce health by damage amount
-    health = health - damage;
-
-    // Prevent health from going below 0
-    if (health < 0.0)
+    if (health <= 0)
     {
-        health = 0.0;
+        return;
     }
 
-    // Print remaining health
-    cout << name << " takes " << damage << " damage, Health now: " << health << endl;
-}
-
-// -------------------------
-// ANIMATION AND UPDATE
-// -------------------------
-
-void PlayerOne::update(float deltaTime)
-{
-    // Keep character on the ground
-    position.y = FLOOR_Y;
-
-    // Update current animation
-    animations[currentAction].update(deltaTime);
-
-    // Reset attack to Idle after it finishes
-    if (currentAction == "Attack")
+    health -= damage;
+    if (health <= 0)
     {
-        static float attackTimer = 0.0f;
-
-        // Add elapsed time
-        attackTimer = attackTimer + deltaTime;
-
-        // Check if attack duration is over
-        if (attackTimer >= 0.3f)  // quick attack
-        {
-            currentAction = "Idle";
-            attackTimer = 0.0f;
-        }
-    }
-}
-
-// -------------------------
-// GET SPRITE FOR DRAWING
-// -------------------------
-
-sf::Sprite PlayerOne::getSprite() const
-{
-    // Get current animation frame
-    sf::Sprite sprite = animations.at(currentAction).getSprite();
-
-    // Set position
-    sprite.setPosition(position);
-
-    // Set scale depending on facing direction
-    if (facingRight)
-    {
-        sprite.setScale(2.0f, 2.0f);
+        health = 0;
+        currentAction = "Death";
+        animations["Death"].reset();
+        isAttacking = false;
+        cout << name << " has died!" << endl;
     }
     else
     {
-        sprite.setScale(-2.0f, 2.0f);
+        currentAction = "Hurt";
+        animations["Hurt"].reset();
+        attackTimer = 0.0f;
+    }
+    cout << name << " takes " << damage << " damage, Health now: " << health << endl; //Test to see if Damage Works, potentially keep for main game
+}
+
+// Runs every frame - handles movement, animation, and attack timing
+void PlayerOne::update(float deltaTime)
+{
+    // Move up/down from jumping or falling
+    position.y += velocity.y;
+    if (!onGround)
+    {
+        velocity.y += 0.10f; // Gravity pulls down
     }
 
-    // Set origin to center
-    sprite.setOrigin(32, 32);
+    // Land on the floor
+    if (position.y >= FLOOR_Y)
+    {
+        position.y = FLOOR_Y;
+        velocity.y = 0;
+        if (currentAction != "Walk" && currentAction != "Attack" && currentAction != "Hurt" && currentAction != "Death")
+        {
+            currentAction = "Idle"; // Stand still when landed
+        }
+        onGround = true;
+    }
+    else
+    {
+        onGround = false;
+    }
 
+    // Control when the attack can hit
+    if (isAttacking && currentAction == "Attack")
+    {
+        attackTimer += deltaTime;
+        // Hitbox is active only during the middle of the attack
+        if (attackTimer >= 0.1f && attackTimer < 0.3f)
+        {
+            hitBoxActive = true;
+            updateHitBox(); // Place hitbox in front of player
+        }
+        else
+        {
+            hitBoxActive = false;
+        }
+        // Attack animation finished
+        if (attackTimer >= 0.6f)
+        {
+            currentAction = "Idle";
+            isAttacking = false;
+            hitBoxActive = false;
+            attackTimer = 0.0f;
+        }
+    }
+
+    //  Hurt animation timing
+    if (currentAction == "Hurt")
+    {
+        attackTimer += deltaTime;
+        if (attackTimer >= 0.35f)
+        {
+            currentAction = onGround ? "Idle" : "Jump";
+            attackTimer = 0.0f;
+        }
+    }
+
+    //Death animation plays once and stops on last frame
+    if (currentAction == "Death")
+    {
+        if (animations["Death"].currentFrame < 7)   // 7th frame of 8 
+        {
+            animations["Death"].update(deltaTime);
+        }
+    }
+    else
+    {
+        animations[currentAction].update(deltaTime);
+    }
+
+    updateCollisionBoxes();
+    Character::update(deltaTime);
+}
+
+// Returns the current sprite with correct position and flip
+sf::Sprite PlayerOne::getSprite() const
+{
+    sf::Sprite sprite = animations.at(currentAction).getSprite();
+    sprite.setPosition(position);
+
+    if (facingRight)
+    {
+        sprite.setScale(2.f, 2.f);     // Normal size, facing right
+    }
+    else
+    {
+        sprite.setScale(-2.f, 2.f);    // Flipped horizontally, facing left
+    }
+
+    sprite.setOrigin(32.f, 32.f);      // Center of the 64x64 image
     return sprite;
+}
+
+// Places the attack hitbox in front of the player depending on direction
+void PlayerOne::updateHitBox()
+{
+    if (facingRight)
+    {
+        hitBox.left = position.x + 10;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
+    else
+    {
+        hitBox.left = position.x - 60;
+        hitBox.top = position.y - 20;
+        hitBox.width = 50;
+        hitBox.height = 30;
+    }
 }

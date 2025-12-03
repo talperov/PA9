@@ -1,92 +1,47 @@
-/*
-    NOTE ABOUT AI:
-    Some of the  comments in this section were generated with
-    the assistance of a  AI tool (ChatGPT) to help  teammates
-    better understand the code structure and logic.
-    All implementation and final decisions were made by my hands.
-*/
+#include <iostream>
+#include "Game.hpp"
+#include "TestCharacter.hpp"
 
-#include <SFML/Graphics.hpp>
-#include "PlayerOne.h"
-#include "PlayerTwo.h"
+using std::cout;
+using std::cin;
+using std::endl;
 
 int main()
 {
-    // Create a window for the game
-    sf::RenderWindow window(sf::VideoMode(800, 600), "2D Fighter Test");
-
-    // Create player objects
-    PlayerOne player1;
-    PlayerTwo player2;
-
-    // Clock to calculate deltaTime for animations and movement
-    sf::Clock clock;
-
-    // Main game loop
-    while (window.isOpen())
+    int choice = 0;
+    do
     {
-        // Event processing
-        sf::Event event;
-        while (window.pollEvent(event))
+        cout << "=============================" << endl;
+        cout << "       MAIN MENU" << endl;
+        cout << "=============================" << endl;
+        cout << "1. Run Tests" << endl;
+        cout << "2. Run Game" << endl;
+        cout << "3. Exit" << endl;
+        cout << "Enter your choice: ";
+
+        cin >> choice;
+
+
+
+        switch (choice)
         {
-            // Close window if the user clicks the close button
-            if (event.type == sf::Event::Closed)
-            {
-                window.close();
-            }
+        case 1:
+            cout << "Running tests...\n";
+            runAllTests();
+            break;
+
+        case 2:
+            cout << "Starting game...\n";
+            runGame();
+            break;
+
+        case 3:
+            cout << "Goodbye!\n";
+            return 0;
+
+        default:
+            cout << "Invalid option.\n";
         }
-
-        // Calculate delta time since last frame
-        float deltaTime = clock.restart().asSeconds();
-
-        // -------------------------
-        // PlayerOne Controls (WASD)
-        // -------------------------
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-        {
-            player1.moveLeft();
-        }
-        else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-        {
-            player1.moveRight();
-        }
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-        {
-            player1.attack();
-        }
-
-        // -------------------------
-        // PlayerTwo Controls (Arrow keys)
-        // -------------------------
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-        {
-            player2.moveLeft();
-        }
-        else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-        {
-            player2.moveRight();
-        }
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::RControl))
-        {
-            player2.attack();
-        }
-
-        // Update players (animations, landing logic, etc.)
-        player1.update(deltaTime);
-        player2.update(deltaTime);
-
-        // Clear the window with black color
-        window.clear(sf::Color::Black);
-
-        // Draw both players
-        window.draw(player1.getSprite());
-        window.draw(player2.getSprite());
-
-        // Display the updated frame
-        window.display();
-    }
-
+    } while (choice != 3);
     return 0;
 }
