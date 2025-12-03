@@ -27,5 +27,5 @@ This is a 2D fighting game between two players. WASD will move player 1 and the 
 Player 1 attacks with the space bar, player 2 attacks with right control.
 Enjoy!
 
-LINK TO VIDEO DEMO BELOW!!!
+LINK TO VIDEO DEMO!!!
 https://youtu.be/rs0Rznhw9A0 
